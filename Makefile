@@ -6,7 +6,7 @@ CC = cc
 
 FLAGS = -Wall -Wextra -Werror
 
-LINKFLAGS = 
+LINKFLAGS = -pthread
 
 LIBS = libft \
 

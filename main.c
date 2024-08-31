@@ -1,43 +1,43 @@
 #include "philo.h"
 
-bool	str_is_valid_number(char *str)
-{
-	int		i;
-	bool	has_digit;
+int mails = 0;
 
-	has_digit = false;
-	i = 0;
-	while (str[i])
+void *routine(t_data *data)
+{
+	for (int i = 0; i < 10000000; i++)
 	{
-		if (i == 0 && str[i] == '+')
-			break;
-		if (str[i] < '0' || str[i] > '9')
-			return (false);
-		else
-			has_digit = true;
+		pthread_mutex_lock();
+		mails++;
+		pthread_mutex_unlock;
+	}
+}
+void	init_philo(pthread_t thread)
+{
+	pthread_create(thread, NULL, &routine, NULL);
+}
+
+void	init_data(t_data *data)
+{
+	int i = 0;
+	while (i < data->number_of_philosophers)
+	{
+		pthread_mutex_init(&(data->philos[i].fork), NULL);
+		init_philo(data->philos[i].thread);
 		i++;
 	}
-	return (has_digit);
 }
 
-bool	are_arguments_valids(int argc, char **args)
-{
-	int	i;
-
-	i = 0;
-	while (i < argc)
-	{
-		if (!str_is_valid_number(args[i]))
-			return (false);
-	}
-}
 
 int main(int argc, char **argv)
 {
-	if (argc < 4 || argc > 5)
-	{
-		printf("Wrong number of arguments");
-		exit(EXIT_FAILURE);
-	}
+	pthread_t		t1;
+	t_data			data;
+	t_philo			*philos;
+	
+	data.number_of_philosophers = 4;
+	philos = malloc(sizeof(t_philo) * data.number_of_philosophers);
+	data.philos = philos;
+
+	init_data(&data);
 	return 0;
 }
