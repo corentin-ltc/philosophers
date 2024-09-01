@@ -10,6 +10,14 @@ size_t	ft_strlen(char *str)
 	return (i);
 }
 
+bool	ft_isdigit(int c)
+{
+	if (c >= '0' && c <= '9')
+		return (true);
+	else
+		return (false);
+}
+
 void	exit_error(char *msg)
 {
 	//free everything
@@ -17,24 +25,24 @@ void	exit_error(char *msg)
 	exit(EXIT_FAILURE);
 }
 
-long	ft_atol(char **str, size_t index)
+long	ft_atol(char *str)
 {
 	long	nb;
 	long	a;
 	int		i;
 
 	i = 0;
-	if (str[index][i] == '-' || str[index][i] == '+')
+	if (str[i] == '-' || str[i] == '+')
 	{
-		if (str[index][i] == '-')
+		if (str[i] == '-')
 			exit_error("Number of milliseconds can't be negative.");
 		i++;
 	}
 	nb = 0;
 	a = 0;
-	while (ft_isdigit(str[index][i]))
+	while (ft_isdigit(str[i]))
 	{
-		a = str[index][i] - '0';
+		a = str[i] - '0';
 		nb *= 10;
 		nb = nb + a;
 		if (nb > INT_MAX)
@@ -68,16 +76,19 @@ bool	are_arguments_valids(int argc, char **args)
 {
 	int	i;
 
-	if (argc < 4 || argc > 5)
+	if (argc < 5 || argc > 6)
 	{
 		printf("Wrong number of arguments");
-		exit(EXIT_FAILURE);
+		return (false);
 	}
-	i = 0;
+	i = 1;
 	while (i < argc)
 	{
 		if (!str_is_valid_number(args[i]))
+		{
+			printf("%s is not a valid number", args[i]);
 			return (false);
+		}
 		i++;
 	}
 	return (true);

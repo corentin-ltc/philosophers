@@ -2,51 +2,20 @@
 
 NAME = philo
 
-CC = cc
+CC = cc -g3
 
-FLAGS = -Wall -Wextra -Werror
+FLAGS = #-Wall -Wextra -Werror
 
 LINKFLAGS = -pthread
-
-LIBS = libft \
 
 INCLUDES =	includes \
 			${foreach lib, ${LIBS}, ${lib} ${lib}/includes}
 
 ######################## SOURCES ########################
 
-PARSING =	split.c \
-			parser.c \
-			vars.c \
-			heredocs.c \
-			files.c \
-			cmds.c \
-			args.c \
-			utils.c
-
-BUILTIN =	builtin.c \
-			echo.c \
-			cd.c \
-			pwd.c \
-			env.c \
-			unset.c \
-			export.c \
-			exit.c
-
-EXEC =	exec.c \
-		utils.c
-
-UTILS =	init.c \
-		errors.c \
-		checks.c \
-		signals.c \
-		env.c
 
 SRCS_NAMES =	main.c \
-				${addprefix parsing/, ${PARSING}} \
-				${addprefix exec/, ${EXEC}} \
-				${addprefix builtin/, ${BUILTIN}} \
-				${addprefix utils/, ${UTILS}} \
+				parsing.c
 
 SRCS_DIR = srcs/
 
@@ -89,10 +58,6 @@ debug : ${OBJS_DIR} ${OBJS}
 
 ${OBJS_DIR} :
 	mkdir $@
-	mkdir $@parsing
-	mkdir $@exec
-	mkdir $@builtin
-	mkdir $@utils
 
 ${OBJS_DIR}%.o : ${SRCS_DIR}%.c
 	${CC} ${FLAGS} ${CPPFLAGS} ${foreach include, ${INCLUDES},-I ${include}} -c $< -o $@
