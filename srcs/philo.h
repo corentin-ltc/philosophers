@@ -13,19 +13,28 @@
 
 # define INFINI -1
 
+typedef struct s_monitor
+{
+	bool	a_philo_starved_to_death;
+ }	t_monitor;
+
 typedef struct s_philo
 {
-	int	number_of_philosophers;
-	int	time_to_die;
-	int	time_to_eat;
-	int	time_to_sleep;
-	int	max_meal_count;
-	int name;
-	int meal_count;
+	int				number_of_philosophers;
+	int				time_to_die;
+	int				time_to_eat;
+	int				time_to_sleep;
+	int				max_meal_count;
+	int				name;
+	int				meal_count;
+	long long		time_of_last_meal;
 	pthread_mutex_t fork;
+	pthread_mutex_t *death;
 	pthread_mutex_t *left_fork;
 	pthread_mutex_t *right_fork;
-	pthread_t thread;
+	pthread_t 		thread;
+	t_monitor		*monitor;
+
 }	t_philo;
 
 typedef struct s_data
@@ -36,7 +45,7 @@ typedef struct s_data
 	int	time_to_sleep;
 	int	max_meal_count;
 
-
+	pthread_mutex_t *death;
 	t_philo *philos;
 }	t_data;
 
