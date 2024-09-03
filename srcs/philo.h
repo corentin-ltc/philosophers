@@ -20,8 +20,8 @@ typedef struct s_philo
 	int				name;
 	int				meal_count;
 	long long 		time_of_last_meal;
-	pthread_mutex_t left_fork;
-	pthread_mutex_t right_fork;
+	pthread_mutex_t *left_fork;
+	pthread_mutex_t *right_fork;
 	pthread_t		thread;
 	long long		start_time;
 	struct s_data	*data;
