@@ -6,7 +6,7 @@
 /*   By: cle-tort <cle-tort@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/03 20:27:11 by cle-tort          #+#    #+#             */
-/*   Updated: 2024/09/14 14:12:32 by cle-tort         ###   ########.fr       */
+/*   Updated: 2024/09/14 22:01:13 by cle-tort         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -117,36 +117,13 @@ bool eating(t_philo *philo)
 	return (false);
 }
 
-void routine(t_philo *philo)
+bool is_sleeping(t_philo *philo)
 {
-  while(!is_starved(philo, true) && (philo->meal_count < philo->data->max_meal_count) || philo->data->max_meal_count == INFINI)
-  {
-	if (philo->name % 2)
-	{
-		if (modulo_zero(philo))
-			break;
-	}
-	else
-	{
-		if (modulo_one(philo))
-			break;
-	}
-		
-	/*----------------EATING-----------------*/
-	if (eating(philo))
-			break;
-	
-	/*----------------END OF EATING-----------------*/
-	//printf("%d UNLOCKING \n", philo->name);
-
-	/*----------------SLEEPING-----------------*/
-	if (is_starved(philo, true))
-		break;
 	secure_printf("is sleeping\n", timenow(philo), *philo, false);
 	if (timenow(philo) - philo->time_of_last_meal + philo->data->time_to_sleep > philo->data->time_to_die)
 	{
 		if (is_starved(philo, true))
-			break;
+			return (true);
 		pthread_mutex_lock(&(philo->data->mutex[CHECK]));
 		philo->data->someone_is_dead = true;
 		usleep((philo->data->time_to_die - (timenow(philo) - philo->time_of_last_meal)) * 1000);
@@ -154,11 +131,33 @@ void routine(t_philo *philo)
 		pthread_mutex_unlock(&(philo->data->mutex[CHECK]));
 	}
 	usleep(philo->data->time_to_sleep * 1000);
-	/*----------------END OF SLEEPING-----------------*/
-	/*----------------THINKING-----------------*/
-	if (!is_starved(philo, true))
-		secure_printf("is thinking\n", timenow(philo), *philo, false);		
-  }
+	return (false);
+}
+
+void routine(t_philo *philo)
+{
+	secure_printf("is thinking\n", timenow(philo), *philo, false);		
+	if (philo->name % 2)
+		usleep(philo->data->time_to_eat);
+  	while(!is_starved(philo, true) && (philo->meal_count < philo->data->max_meal_count) || philo->data->max_meal_count == INFINI)
+ 	{
+		if (philo->data->number_of_philosophers % 2 || philo->name % 2)
+		{
+			if (modulo_one(philo))
+				break;
+		}
+		else
+		{
+			if (modulo_zero(philo))
+				break;
+		}
+		if (eating(philo))
+				break;
+		if (is_starved(philo, true) || is_sleeping(philo))
+			break;
+		if (!is_starved(philo, true))
+			secure_printf("is thinking\n", timenow(philo), *philo, false);		
+	}
 }
 
 
@@ -190,6 +189,7 @@ void init_data(t_data *data)
 	data->someone_is_dead = false;
     gettimeofday(&tv, NULL);
     time_in_ms = (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
+
 	data->mutex = malloc(sizeof(pthread_mutex_t) * 5);
 	if (!data->mutex)
 	{
