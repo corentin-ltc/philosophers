@@ -19,6 +19,7 @@ typedef struct s_philo
 {
 	int				name;
 	int				meal_count;
+	bool			is_thinking;
 	long long 		time_of_last_meal;
 	pthread_mutex_t *left_fork;
 	pthread_mutex_t *right_fork;
@@ -35,6 +36,8 @@ typedef struct s_data
 	int				time_to_sleep;
 	int				max_meal_count;
 	bool			someone_is_dead;
+	pthread_t		monitor_thread;
+
 
 	pthread_mutex_t *mutex;
 	pthread_mutex_t *forks;
