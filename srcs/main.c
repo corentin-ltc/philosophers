@@ -6,16 +6,22 @@
 /*   By: cle-tort <cle-tort@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/03 20:27:11 by cle-tort          #+#    #+#             */
-/*   Updated: 2024/09/03 20:28:47 by cle-tort         ###   ########.fr       */
+/*   Updated: 2024/09/14 14:12:32 by cle-tort         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "philo.h"
 
-void secure_printf(char *message, long long time, t_philo philo)
+void secure_printf(char *message, long long time, t_philo philo, bool is_death)
 {
     pthread_mutex_lock(&(philo.data->mutex[TEXT]));
-    printf("%lld %d %s", time, philo.name, message);
+	if (!is_death)
+	{
+		if (!philo.data->someone_is_dead)
+			printf("%lld %d %s", time, philo.name, message);
+	}
+	else
+		printf("%lld %d %s", time, philo.name, message);
     pthread_mutex_unlock(&(philo.data->mutex[TEXT]));
 }
 
@@ -42,11 +48,73 @@ bool is_starved(t_philo *philo, bool just_checking)
     {
 		philo->data->someone_is_dead = true;
 	    pthread_mutex_unlock(&(philo->data->mutex[CHECK]));
-        secure_printf("died\n", now, *philo);
+        secure_printf("died\n", now, *philo, true);
         return (true);
     }
     pthread_mutex_unlock(&(philo->data->mutex[CHECK]));
     return (false);
+}
+
+
+bool modulo_zero(t_philo *philo)
+{
+	pthread_mutex_lock(philo->left_fork);
+	if (is_starved(philo, false))
+	{
+		pthread_mutex_unlock(philo->left_fork);	
+		return (true);
+	}
+	secure_printf("has taken a fork\n", timenow(philo), *philo, false);
+	pthread_mutex_lock(philo->right_fork);
+	if (is_starved(philo, false))
+	{
+		pthread_mutex_unlock(philo->left_fork);
+		pthread_mutex_unlock(philo->right_fork);
+		return (true);
+	}
+	secure_printf("has taken a fork\n", timenow(philo), *philo, false);
+	return (false);
+}
+bool modulo_one(t_philo *philo)
+{
+	pthread_mutex_lock(philo->right_fork);
+	if (is_starved(philo, false))
+	{
+		pthread_mutex_unlock(philo->right_fork);
+		return (true);
+	}
+	secure_printf("has taken a fork\n", timenow(philo), *philo, false);
+	pthread_mutex_lock(philo->left_fork);
+	if (is_starved(philo, false))
+	{
+		pthread_mutex_unlock(philo->left_fork);
+		pthread_mutex_unlock(philo->right_fork);					
+		return (true);
+	}
+	secure_printf("has taken a fork\n", timenow(philo), *philo, false);
+	return (false);
+}
+bool eating(t_philo *philo)
+{
+	secure_printf("is eating\n", timenow(philo), *philo, false);
+	philo->time_of_last_meal = timenow(philo);
+	if (philo->data->time_to_eat > philo->data->time_to_die)
+	{
+		pthread_mutex_lock(&(philo->data->mutex[CHECK]));
+		philo->data->someone_is_dead = true;
+		usleep(philo->data->time_to_die * 1000);
+	    secure_printf("died\n", timenow(philo), *philo, true);
+		pthread_mutex_unlock(philo->left_fork);
+		pthread_mutex_unlock(philo->right_fork);
+		pthread_mutex_unlock(&(philo->data->mutex[CHECK]));
+		return (true);
+	}
+	usleep(philo->data->time_to_eat * 1000);
+	if (philo->data->max_meal_count != INFINI)
+		philo->meal_count++;
+	pthread_mutex_unlock(philo->left_fork);
+	pthread_mutex_unlock(philo->right_fork);
+	return (false);
 }
 
 void routine(t_philo *philo)
@@ -55,67 +123,26 @@ void routine(t_philo *philo)
   {
 	if (philo->name % 2)
 	{
-		pthread_mutex_lock(philo->left_fork);
-		if (is_starved(philo, false))
-		{
-			pthread_mutex_unlock(philo->left_fork);	
+		if (modulo_zero(philo))
 			break;
-		}
-		secure_printf("has taken a fork\n", timenow(philo), *philo);
-		pthread_mutex_lock(philo->right_fork);
-		if (is_starved(philo, false))
-		{
-			pthread_mutex_unlock(philo->left_fork);
-			pthread_mutex_unlock(philo->right_fork);
-			break;
-		}
-		secure_printf("has taken a fork\n", timenow(philo), *philo);
 	}
 	else
 	{
-		pthread_mutex_lock(philo->right_fork);
-		if (is_starved(philo, false))
-		{
-			pthread_mutex_unlock(philo->right_fork);
+		if (modulo_one(philo))
 			break;
-		}
-		secure_printf("has taken a fork\n", timenow(philo), *philo);
-		pthread_mutex_lock(philo->left_fork);
-		if (is_starved(philo, false))
-		{
-			pthread_mutex_unlock(philo->left_fork);
-			pthread_mutex_unlock(philo->right_fork);					
-			break;
-		}
-		secure_printf("has taken a fork\n", timenow(philo), *philo);
 	}
 		
 	/*----------------EATING-----------------*/
-	secure_printf("is eating\n", timenow(philo), *philo);
-	philo->time_of_last_meal = timenow(philo);
-	if (philo->data->time_to_eat > philo->data->time_to_die)
-	{
-		pthread_mutex_lock(&(philo->data->mutex[CHECK]));
-		philo->data->someone_is_dead = true;
-		usleep(philo->data->time_to_die * 1000);
-	    secure_printf("died\n", timenow(philo), *philo);
-		pthread_mutex_unlock(philo->left_fork);
-		pthread_mutex_unlock(philo->right_fork);
-		pthread_mutex_unlock(&(philo->data->mutex[CHECK]));
-		break;
-	}
-	usleep(philo->data->time_to_eat * 1000);
-	if (philo->data->max_meal_count != INFINI)
-		philo->meal_count++;
+	if (eating(philo))
+			break;
 	
 	/*----------------END OF EATING-----------------*/
 	//printf("%d UNLOCKING \n", philo->name);
-	pthread_mutex_unlock(philo->left_fork);
-	pthread_mutex_unlock(philo->right_fork);
+
 	/*----------------SLEEPING-----------------*/
 	if (is_starved(philo, true))
 		break;
-	secure_printf("is sleeping\n", timenow(philo), *philo);
+	secure_printf("is sleeping\n", timenow(philo), *philo, false);
 	if (timenow(philo) - philo->time_of_last_meal + philo->data->time_to_sleep > philo->data->time_to_die)
 	{
 		if (is_starved(philo, true))
@@ -123,14 +150,14 @@ void routine(t_philo *philo)
 		pthread_mutex_lock(&(philo->data->mutex[CHECK]));
 		philo->data->someone_is_dead = true;
 		usleep((philo->data->time_to_die - (timenow(philo) - philo->time_of_last_meal)) * 1000);
-		secure_printf("died\n", timenow(philo), *philo);
+		secure_printf("died\n", timenow(philo), *philo, true);
 		pthread_mutex_unlock(&(philo->data->mutex[CHECK]));
 	}
 	usleep(philo->data->time_to_sleep * 1000);
 	/*----------------END OF SLEEPING-----------------*/
 	/*----------------THINKING-----------------*/
 	if (!is_starved(philo, true))
-		secure_printf("is thinking\n", timenow(philo), *philo);		
+		secure_printf("is thinking\n", timenow(philo), *philo, false);		
   }
 }
 
@@ -151,7 +178,6 @@ void init_philo(t_philo *philo, t_data *data)
         philo->left_fork = &data->forks[philo->name];
         philo->right_fork = &data->forks[philo->name + 1];
     }
-	//printf("Philo %d :\nLeft fork : %p, Right fork : %p\n\n\n", philo->name, &philo->left_fork, &philo->right_fork);
 	pthread_create(&(philo->thread), NULL, (void *)routine, philo);
 }
 
@@ -202,13 +228,10 @@ void init_data(t_data *data)
     {
         pthread_join(data->philos[i].thread, NULL);
         i++;
-   }
-
-    // pthread_mutex_destroy(&monitor.lock);
-    // pthread_mutex_destroy(&data->secure_text);
-    // for (i = 0; i < data->number_of_philosophers; i++)
-    //     pthread_mutex_destroy(&(data->philos[i].fork));
-    // free(data->philos);
+	}
+	free(data->mutex);
+	free(data->forks);
+	free(data->philos);
 }
 
 int parsing(int argc, char **argv, t_data *data)
@@ -233,5 +256,6 @@ int main(int argc, char **argv)
     if (!parsing(argc, argv, &data))
         return (0);
     init_data(&data);
+
     return (0);
 }

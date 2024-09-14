@@ -44,5 +44,6 @@ typedef struct s_data
 
 bool	are_arguments_valids(int argc, char **args);
 long	ft_atol(char *str);
+bool is_starved(t_philo *philo, bool just_checking);
 
 #endif
