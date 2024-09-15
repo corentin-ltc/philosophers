@@ -15,7 +15,8 @@ INCLUDES =	includes \
 
 
 SRCS_NAMES =	main.c \
-				parsing.c
+				parsing.c \
+				utils.c
 
 SRCS_DIR = srcs/
 

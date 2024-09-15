@@ -6,47 +6,26 @@
 /*   By: cle-tort <cle-tort@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/03 20:27:11 by cle-tort          #+#    #+#             */
-/*   Updated: 2024/09/14 23:28:33 by cle-tort         ###   ########.fr       */
+/*   Updated: 2024/09/15 17:42:28 by cle-tort         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "philo.h"
 
-void secure_printf(char *message, long long time, t_philo philo, bool is_death)
-{
-    pthread_mutex_lock(&(philo.data->mutex[TEXT]));
-	if (!is_death)
-	{
-		if (!philo.data->someone_is_dead)
-			printf("%lld %d %s", time, philo.name, message);
-	}
-	else
-		printf("%lld %d %s", time, philo.name, message);
-    pthread_mutex_unlock(&(philo.data->mutex[TEXT]));
-}
-
-long long timenow(t_philo *philo)
-{
-    struct timeval tv;
-    long long      time_in_ms;
-
-    gettimeofday(&tv, NULL);
-    time_in_ms = (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
-    return (time_in_ms - philo->start_time);
-}
-
 bool is_starved(t_philo *philo, bool just_checking)
 {
     long long now = timenow(philo);
     pthread_mutex_lock(&(philo->data->mutex[CHECK]));
-    if (philo->data->someone_is_dead)
+    if ((get_bool(&(philo->data->mutex[DEATH]), &philo->data->someone_is_dead)))
     {
         pthread_mutex_unlock(&(philo->data->mutex[CHECK]));
         return (true);
     }
     if (!just_checking && (now - 2 - philo->time_of_last_meal > philo->data->time_to_die))
     {
+   		pthread_mutex_lock(&(philo->data->mutex[DEATH]));
 		philo->data->someone_is_dead = true;
+   		pthread_mutex_unlock(&(philo->data->mutex[DEATH]));
 	    pthread_mutex_unlock(&(philo->data->mutex[CHECK]));
         secure_printf("died\n", now, *philo, true);
         return (true);
@@ -77,7 +56,9 @@ bool take_forks(t_philo *philo)
 bool eating(t_philo *philo)
 {
 	secure_printf("is eating\n", timenow(philo), *philo, false);
+	pthread_mutex_lock(&(philo->data->mutex[CHECK]));
 	philo->time_of_last_meal = timenow(philo);
+	pthread_mutex_unlock(&(philo->data->mutex[CHECK]));
 	if (philo->data->time_to_eat > philo->data->time_to_die)
 	{
 		pthread_mutex_lock(&(philo->data->mutex[CHECK]));
@@ -105,7 +86,9 @@ bool is_sleeping(t_philo *philo)
 		if (is_starved(philo, true))
 			return (true);
 		pthread_mutex_lock(&(philo->data->mutex[CHECK]));
+   		pthread_mutex_lock(&(philo->data->mutex[DEATH]));
 		philo->data->someone_is_dead = true;
+   		pthread_mutex_unlock(&(philo->data->mutex[DEATH]));
 		usleep((philo->data->time_to_die - (timenow(philo) - philo->time_of_last_meal)) * 1000);
 		secure_printf("died\n", timenow(philo), *philo, true);
 		pthread_mutex_unlock(&(philo->data->mutex[CHECK]));
@@ -121,10 +104,14 @@ void routine(t_philo *philo)
 		usleep(philo->data->time_to_eat);
   	while(!is_starved(philo, true) && (philo->meal_count < philo->data->max_meal_count) || philo->data->max_meal_count == INFINI)
  	{
+   		pthread_mutex_lock(&philo->data->mutex[THINK]);
 		philo->is_thinking = true;
+   		pthread_mutex_unlock(&philo->data->mutex[THINK]);
 		if (take_forks(philo))
 			break;
+   		pthread_mutex_lock(&philo->data->mutex[THINK]);
 		philo->is_thinking = false;
+   		pthread_mutex_unlock(&philo->data->mutex[THINK]);
 		if (eating(philo))
 			break;
 		if (is_starved(philo, true) || is_sleeping(philo))
@@ -142,6 +129,7 @@ void init_philo(t_philo *philo, t_data *data)
     philo->time_of_last_meal = timenow(philo);
     philo->meal_count = 0;
 	philo->data = data;
+	philo->is_thinking = true;
 	philo->left_fork = &data->forks[philo->name - 1];
     if (philo->name == data->number_of_philosophers)
         philo->right_fork = &data->forks[0];
@@ -156,29 +144,33 @@ void init_philo(t_philo *philo, t_data *data)
 	pthread_create(&(philo->thread), NULL, (void *)routine, philo);
 }
 
+
+
 void monitor(t_data *data)
 {
 	int	i;
 
-	while (data->someone_is_dead == false)
+	while ((get_bool(&(data->mutex[DEATH]), &data->someone_is_dead)) == false)
 	{	
 		i = 0;
+		pthread_mutex_lock(&(data->mutex[CHECK]));
 		while (i < data->number_of_philosophers)
 		{
-			if (data->philos[i].is_thinking)
+			if ((get_bool(&(data->mutex[THINK]), &data->philos[i].is_thinking)))
 			{
 			//	printf("philo %d : %lld\n", i + 1, timenow(&data->philos[i]) - data->philos[i].time_of_last_meal);
 				if (timenow(&data->philos[i]) - data->philos[i].time_of_last_meal > data->time_to_die)
 				{
-				    pthread_mutex_lock(&(data->mutex[CHECK]));
 					secure_printf("died\n", timenow(&data->philos[i]), data->philos[i], true);
+   					pthread_mutex_lock(&data->mutex[DEATH]);
 					data->someone_is_dead = true;
-				    pthread_mutex_unlock(&(data->mutex[CHECK]));
+			   		pthread_mutex_unlock(&data->mutex[DEATH]);
 					break;
 				}
 			}
 			i++;
 		}
+		pthread_mutex_unlock(&(data->mutex[CHECK]));
 		usleep(100);
 	}
 }
@@ -193,14 +185,14 @@ void init_data(t_data *data)
     gettimeofday(&tv, NULL);
     time_in_ms = (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
 
-	data->mutex = malloc(sizeof(pthread_mutex_t) * 5);
+	data->mutex = malloc(sizeof(pthread_mutex_t) * 4);
 	if (!data->mutex)
 	{
 		// free philos
 		return ;
 	}
 	i = 0;
-	while (i < 5)
+	while (i < 4)
 		pthread_mutex_init(&data->mutex[i++], NULL);
 	data->forks = malloc(sizeof(pthread_mutex_t) * data->number_of_philosophers);
 	if (!data->forks)
@@ -234,7 +226,9 @@ void init_data(t_data *data)
         pthread_join(data->philos[i].thread, NULL);
         i++;
 	}
+	pthread_mutex_lock(&data->mutex[DEATH]);
 	data->someone_is_dead = true;
+	pthread_mutex_unlock(&data->mutex[DEATH]);
     pthread_join(data->monitor_thread, NULL);
 	free(data->mutex);
 	free(data->forks);
