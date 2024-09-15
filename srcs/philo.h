@@ -16,6 +16,7 @@
 # define CHECK 1
 # define DEATH 2
 # define THINK 3
+# define READY 4
 
 typedef struct s_philo
 {
@@ -52,6 +53,7 @@ long	ft_atol(char *str);
 bool is_starved(t_philo *philo, bool just_checking);
 bool get_bool(pthread_mutex_t *mutex, bool *boolean);
 long long timenow(t_philo *philo);
+void ft_usleep(long long microseconds);
 void secure_printf(char *message, long long time, t_philo philo, bool is_death);
 
 #endif
