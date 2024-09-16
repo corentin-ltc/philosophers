@@ -16,7 +16,10 @@ INCLUDES =	includes \
 
 SRCS_NAMES =	main.c \
 				parsing.c \
-				utils.c
+				utils.c \
+				init.c \
+				routine.c \
+				mini_lib.c
 
 SRCS_DIR = srcs/
 
